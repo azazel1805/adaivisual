@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Item Detector</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #4CAF50; /* Gemini-like green */
+        }
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #imageInputLabel {
+            display: inline-block; /* Allows styling as a button */
+            padding: 12px 25px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 15px;
+            transition: background-color 0.3s ease;
+        }
+        #imageInputLabel:hover {
+            background-color: #45a049;
+        }
+        #imageInput {
+            display: none; /* Hide the default file input */
+        }
+        #imagePreview {
+            display: block;
+            max-width: 100%;
+            max-height: 300px; /* Limit preview height */
+            margin: 15px auto;
+            border-radius: 5px;
+            border: 1px solid #ddd; /* Add a subtle border */
+        }
+        #analyzeButton {
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+            transition: background-color 0.3s ease;
+            display: none; /* Hidden initially */
+        }
+        #analyzeButton:hover {
+            background-color: #0056b3;
+        }
+        #analyzeButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9e9e9;
+            border-radius: 5px;
+            text-align: left;
+            white-space: pre-wrap; /* Preserve line breaks from Gemini */
+            min-height: 50px; /* Ensure it's visible even when empty */
+            border: 1px solid #ccc;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+            display: none; /* Hidden initially */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            color: #dc3545;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Gemini Item Detector</h1>
+
+        <!-- Custom styled label acting as a button -->
+        <label for="imageInput" id="imageInputLabel">Choose or Take Photo</label>
+        <!-- Actual file input, hidden -->
+        <!-- accept="image/*" hints for image files -->
+        <!-- capture="environment" hints for the rear camera on mobile -->
+        <input type="file" id="imageInput" accept="image/*" capture="environment">
+
+        <img id="imagePreview" src="#" alt="Image Preview" style="display: none;">
+
+        <button id="analyzeButton" disabled>Analyze Image</button>
+
+        <div class="spinner" id="loadingSpinner"></div>
+
+        <h2>Results:</h2>
+        <div id="results">
+            <p>Upload an image to see the detected items.</p>
+        </div>
+         <div id="errorArea" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const resultsDiv = document.getElementById('results');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const errorArea = document.getElementById('errorArea');
+        const imageInputLabel = document.getElementById('imageInputLabel'); // Get the label
+
+        imageInput.addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                    analyzeButton.style.display = 'inline-block'; // Show button
+                    analyzeButton.disabled = false; // Enable button
+                    resultsDiv.innerHTML = '<p>Image selected. Click Analyze.</p>'; // Reset results
+                    errorArea.style.display = 'none'; // Hide previous errors
+                    imageInputLabel.textContent = 'Change Photo'; // Change button text
+                }
+                reader.readAsDataURL(file); // Read file for preview
+            } else {
+                // Handle case where user cancels file selection
+                imagePreview.style.display = 'none';
+                analyzeButton.style.display = 'none';
+                analyzeButton.disabled = true;
+                imageInputLabel.textContent = 'Choose or Take Photo';
+            }
+        });
+
+        analyzeButton.addEventListener('click', async function() {
+            const file = imageInput.files[0];
+            if (!file) {
+                alert("Please select an image first.");
+                return;
+            }
+
+            // Show spinner, disable button, clear results/errors
+            loadingSpinner.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            errorArea.style.display = 'none';
+            analyzeButton.disabled = true;
+            analyzeButton.textContent = 'Analyzing...';
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData // Send FormData directly
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resultsDiv.innerHTML = `<p>${result.description.replace(/\n/g, '<br>')}</p>`; // Display result, converting newlines
+                } else {
+                    // Handle errors from the backend
+                    console.error("Backend error:", result.error);
+                    errorArea.textContent = `Error: ${result.error || 'Unknown error from server.'}`;
+                    errorArea.style.display = 'block';
+                    resultsDiv.innerHTML = '<p>Analysis failed.</p>';
+                }
+
+            } catch (error) {
+                // Handle network errors or issues with the fetch itself
+                console.error("Fetch error:", error);
+                errorArea.textContent = `Network or client-side error: ${error.message}`;
+                errorArea.style.display = 'block';
+                resultsDiv.innerHTML = '<p>Analysis failed.</p>';
+            } finally {
+                // Hide spinner, re-enable button
+                loadingSpinner.style.display = 'none';
+                analyzeButton.disabled = false;
+                 analyzeButton.textContent = 'Analyze Image';
+            }
+        });
+    </script>
+</body>
+</html>

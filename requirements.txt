@@ -1,0 +1,5 @@
+Flask>=2.0
+google-generativeai>=0.4.0 # Or a newer version
+python-dotenv>=0.19.0
+Pillow>=9.0.0        # For image handling
+gunicorn>=20.1.0       # For deployment on Render
