@@ -1,5 +1,6 @@
 Flask>=2.0
-google-generativeai>=0.4.0 # Or a newer version
+google-generativeai>=0.4.0 # Or a newer/your specific version
 python-dotenv>=0.19.0
-Pillow>=9.0.0        # For image handling
+Pillow>=9.0.0        # For image handling (resizing, orientation)
 gunicorn>=20.1.0       # For deployment on Render
+Werkzeug>=2.0       # For secure_filename
