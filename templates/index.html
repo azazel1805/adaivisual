@@ -155,13 +155,16 @@
                 analyzeButton.style.display = 'none';
                 analyzeButton.disabled = true;
                 imageInputLabel.textContent = 'Choose or Take Photo';
+                resultsDiv.innerHTML = '<p>Upload an image to see the detected items.</p>';
+                errorArea.style.display = 'none'; // Also hide errors on cancel
             }
         });
 
         analyzeButton.addEventListener('click', async function() {
             const file = imageInput.files[0];
             if (!file) {
-                alert("Please select an image first.");
+                errorArea.textContent = 'Please select an image first.';
+                errorArea.style.display = 'block';
                 return;
             }
 
